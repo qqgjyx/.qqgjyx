@@ -48,6 +48,8 @@ class QQ:
         print("  from qqgjyx import QQ")
         print("  QQ.env()")
         print("  QQ.seed(123)")
+        print("  QQ.style()")
+        print("  train, val = QQ.split(dataset)")
 
 
 __all__ = ["QQ"]
