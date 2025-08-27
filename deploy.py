@@ -3,32 +3,31 @@
 Automated deployment script for qqgjyx.
 
 Usage:
-    python deploy.py [--version VERSION] [--message MESSAGE] [--skip-tests] [--skip-upload]
+    python deploy.py [--version VERSION] [--message MESSAGE] [--skip-tests] [--skip-upload] [--all-tests] [--dry-run]
     
 Examples:
     python deploy.py --version 0.1.3 --message "Add new feature"
     python deploy.py --skip-tests  # Skip running tests
     python deploy.py --skip-upload  # Skip PyPI upload
+    python deploy.py --all-tests  # Run full suite (may require optional deps)
 """
 
 import argparse
 import subprocess
 import sys
-import os
 import re
 from pathlib import Path
 
 
 def run_command(cmd, check=True, capture_output=True):
-    """Run a shell command and return result."""
     print(f"🔄 Running: {cmd}")
     try:
         result = subprocess.run(
-            cmd, 
-            shell=True, 
-            check=check, 
+            cmd,
+            shell=True,
+            check=check,
             capture_output=capture_output,
-            text=True
+            text=True,
         )
         if capture_output and result.stdout:
             print(result.stdout)
@@ -43,7 +42,6 @@ def run_command(cmd, check=True, capture_output=True):
 
 
 def get_current_version():
-    """Get current version from __init__.py."""
     init_file = Path("src/qqgjyx/__init__.py")
     with open(init_file) as f:
         content = f.read()
@@ -53,56 +51,40 @@ def get_current_version():
     raise ValueError("Could not find version in __init__.py")
 
 
-def update_version(new_version):
-    """Update version in both __init__.py and pyproject.toml."""
+def update_version(new_version: str) -> None:
     print(f"📝 Updating version to {new_version}")
-    
-    # Update __init__.py
+
     init_file = Path("src/qqgjyx/__init__.py")
-    with open(init_file) as f:
-        content = f.read()
-    content = re.sub(r'__version__ = "[^"]+"', f'__version__ = "{new_version}"', content)
-    with open(init_file, 'w') as f:
-        f.write(content)
-    
-    # Update pyproject.toml
+    init_text = init_file.read_text()
+    init_text = re.sub(r'__version__ = "[^"]+"', f'__version__ = "{new_version}"', init_text)
+    init_file.write_text(init_text)
+
     pyproject_file = Path("pyproject.toml")
-    with open(pyproject_file) as f:
-        content = f.read()
-    content = re.sub(r'version = "[^"]+"', f'version = "{new_version}"', content)
-    with open(pyproject_file, 'w') as f:
-        f.write(content)
-    
+    py_text = pyproject_file.read_text()
+    py_text = re.sub(r'version = "[^"]+"', f'version = "{new_version}"', py_text)
+    pyproject_file.write_text(py_text)
+
     print(f"✅ Version updated to {new_version}")
 
 
-def run_tests():
-    """Run the test suite."""
+def run_tests(run_all: bool = False) -> None:
     print("🧪 Running tests...")
-    
-    # Install package in editable mode
+    # Install editable
     run_command("conda run -n pkg-dev python -m pip install -e .")
-    
-    # Run tests
-    result = run_command("conda run -n pkg-dev python -m pytest test/ -v")
-    
+    # Prefer lightweight tests by default
+    test_target = "test/" if run_all else "test/test_basic.py"
+    result = run_command(f"conda run -n pkg-dev python -m pytest {test_target} -v")
     if result.returncode == 0:
-        print("✅ All tests passed!")
+        print("✅ Tests passed!")
     else:
         print("❌ Tests failed!")
         sys.exit(1)
 
 
-def build_package():
-    """Build the package."""
+def build_package() -> None:
     print("📦 Building package...")
-    
-    # Clean previous builds
     run_command("rm -rf dist build")
-    
-    # Build
     result = run_command("conda run -n pkg-dev python -m build")
-    
     if result.returncode == 0:
         print("✅ Package built successfully!")
     else:
@@ -110,12 +92,9 @@ def build_package():
         sys.exit(1)
 
 
-def validate_package():
-    """Validate the built package."""
+def validate_package() -> None:
     print("🔍 Validating package...")
-    
     result = run_command("conda run -n pkg-dev twine check dist/*")
-    
     if result.returncode == 0:
         print("✅ Package validation passed!")
     else:
@@ -123,12 +102,9 @@ def validate_package():
         sys.exit(1)
 
 
-def upload_package():
-    """Upload package to PyPI."""
+def upload_package() -> None:
     print("🚀 Uploading to PyPI...")
-    
     result = run_command("conda run -n pkg-dev twine upload dist/*")
-    
     if result.returncode == 0:
         print("✅ Package uploaded successfully!")
     else:
@@ -136,103 +112,76 @@ def upload_package():
         sys.exit(1)
 
 
-def git_commit_and_tag(version, message):
-    """Commit changes and create git tag."""
+def git_commit_and_tag(version: str, message: str | None) -> None:
     print("📝 Committing changes...")
-    
-    # Add all changes
     run_command("git add -A")
-    
-    # Commit
     commit_msg = f"Release {version}: {message}" if message else f"Release {version}"
     run_command(f'git commit -m "{commit_msg}"')
-    
-    # Create tag
     run_command(f'git tag -a v{version} -m "qqgjyx {version}"')
-    
-    # Push
     run_command("git push")
     run_command("git push --tags")
-    
     print(f"✅ Git commit and tag v{version} created!")
 
 
-def check_git_status():
-    """Check git status and warn about uncommitted changes."""
+def check_git_status() -> None:
     result = run_command("git status --porcelain", check=False)
     if result.stdout.strip():
         print("⚠️  Warning: You have uncommitted changes:")
         print(result.stdout)
         response = input("Continue anyway? (y/N): ")
-        if response.lower() != 'y':
+        if response.lower() != "y":
             sys.exit(0)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Deploy qqgjyx package")
     parser.add_argument("--version", help="New version number (e.g., 0.1.3)")
     parser.add_argument("--message", help="Commit message")
     parser.add_argument("--skip-tests", action="store_true", help="Skip running tests")
     parser.add_argument("--skip-upload", action="store_true", help="Skip PyPI upload")
+    parser.add_argument("--all-tests", action="store_true", help="Run full test suite (may require optional deps)")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done without executing")
-    
+
     args = parser.parse_args()
-    
+
     print("🚀 qqgjyx Deployment Script")
     print("=" * 40)
-    
-    # Check git status
+
     check_git_status()
-    
-    # Get current version
+
     current_version = get_current_version()
     print(f"📋 Current version: {current_version}")
-    
-    # Determine new version
-    if args.version:
-        new_version = args.version
-    else:
-        # Auto-increment patch version
-        parts = current_version.split('.')
-        parts[-1] = str(int(parts[-1]) + 1)
-        new_version = '.'.join(parts)
-    
+
+    new_version = args.version if args.version else ".".join([*current_version.split(".")[:-1], str(int(current_version.split(".")[-1]) + 1)])
     print(f"🎯 Target version: {new_version}")
-    
+
     if args.dry_run:
         print("\n🔍 DRY RUN - Would execute:")
         print(f"  1. Update version to {new_version}")
-        print("  2. Run tests" + (" (SKIPPED)" if args.skip_tests else ""))
+        print("  2. Run tests" + (" (SKIPPED)" if args.skip_tests else (" (ALL)" if args.all_tests else " (BASIC)")))
         print("  3. Build package")
         print("  4. Validate package")
         print("  5. Upload to PyPI" + (" (SKIPPED)" if args.skip_upload else ""))
         print("  6. Commit and tag")
         return
-    
-    # Update version
+
     update_version(new_version)
-    
-    # Run tests
+
     if not args.skip_tests:
-        run_tests()
+        run_tests(run_all=args.all_tests)
     else:
         print("⏭️  Skipping tests")
-    
-    # Build package
+
     build_package()
-    
-    # Validate package
     validate_package()
-    
-    # Upload package
+
     if not args.skip_upload:
         upload_package()
     else:
         print("⏭️  Skipping PyPI upload")
-    
-    # Git operations
+
     git_commit_and_tag(new_version, args.message)
-    
+
     print("\n🎉 Deployment completed successfully!")
     print(f"📦 Package: qqgjyx {new_version}")
     print(f"🔗 PyPI: https://pypi.org/project/qqgjyx/{new_version}/")
