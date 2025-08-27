@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import scienceplots  # noqa: F401  # register 'science' style
 
 
-def set_plt_style() -> None:
+def style() -> None:
     """Set the style for matplotlib."""
     plt.style.use("science")
     plt.rcParams.update(
@@ -25,6 +25,9 @@ def set_plt_style() -> None:
     )
 
 
-__all__ = ["set_plt_style"]
+__all__ = ["style"]
+
+# Backward compatibility alias
+set_plt_style = style
 
 

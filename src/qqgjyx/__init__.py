@@ -3,8 +3,10 @@
 Minimal package skeleton for distribution on PyPI.
 """
 
-__all__ = ["__version__"]
+from .qq import QQ
 
-__version__ = "0.1.1"
+__all__ = ["__version__", "QQ"]
+
+__version__ = "0.1.2"
 
 

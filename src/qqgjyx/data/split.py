@@ -2,11 +2,10 @@
 
 from typing import Tuple
 
-import torch
 from torch.utils.data import Dataset, random_split
 
 
-def train_val_split(train_set: Dataset, val_ratio: float = 0.2, seed: int = 42) -> Tuple[Dataset, Dataset]:
+def split(train_set: Dataset, val_ratio: float = 0.2, seed: int = 42) -> Tuple[Dataset, Dataset]:
     """
     Split the dataset into training and validation sets.
 
@@ -33,6 +32,9 @@ def train_val_split(train_set: Dataset, val_ratio: float = 0.2, seed: int = 42) 
     return train_subset, val_subset
 
 
-__all__ = ["train_val_split"]
+__all__ = ["split"]
+
+# Backward compatibility alias
+train_val_split = split
 
 

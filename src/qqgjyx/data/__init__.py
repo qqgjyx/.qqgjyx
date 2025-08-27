@@ -1,5 +1,8 @@
-from .split import train_val_split
+from .split import split
 
-__all__ = ["train_val_split"]
+__all__ = ["split"]
+
+# Backward compatibility alias
+train_val_split = split
 
 

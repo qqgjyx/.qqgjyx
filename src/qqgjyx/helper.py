@@ -5,7 +5,7 @@ import sys
 from typing import Optional
 
 
-def print_environment_info() -> None:
+def env() -> None:
     """Print information about the environment (imports on demand)."""
     # Lazy imports to avoid heavy deps at import time
     import numpy as np  # type: ignore
@@ -19,7 +19,7 @@ def print_environment_info() -> None:
     print("============================\n")
 
 
-def get_device_info() -> "object":
+def dev() -> "object":
     """Get information about available computing devices.
 
     Returns
@@ -42,33 +42,38 @@ def get_device_info() -> "object":
     return device
 
 
-def set_all_seeds(seed: int = 42) -> int:
+def seed(seed_value: int = 42) -> int:
     """Set all seeds for reproducibility."""
     import numpy as np  # type: ignore
     import pytorch_lightning as pl  # type: ignore
     import torch  # type: ignore
 
     print("\n=== Setting Random Seeds ===")
-    print(f"Seed value: {seed}")
+    print(f"Seed value: {seed_value}")
     print("Setting torch CPU seed...")
-    torch.manual_seed(seed)
+    torch.manual_seed(seed_value)
     print("Setting torch CUDA seed...")
-    torch.cuda.manual_seed_all(seed)
+    torch.cuda.manual_seed_all(seed_value)
     print("Setting numpy seed...")
-    np.random.seed(seed)
+    np.random.seed(seed_value)
     print("Configuring CUDNN...")
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     print("Configuring PL...")
-    pl.seed_everything(seed, workers=True)
+    pl.seed_everything(seed_value, workers=True)
     print("========================\n")
-    return seed
+    return seed_value
 
 
 __all__ = [
-    "print_environment_info",
-    "get_device_info",
-    "set_all_seeds",
+    "env",
+    "dev", 
+    "seed",
 ]
+
+# Backward compatibility aliases
+print_environment_info = env
+get_device_info = dev
+set_all_seeds = seed
 
 

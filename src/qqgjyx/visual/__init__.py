@@ -1,5 +1,8 @@
-from .plotting import set_plt_style
+from .plotting import style
 
-__all__ = ["set_plt_style"]
+__all__ = ["style"]
+
+# Backward compatibility alias
+set_plt_style = style
 
 
